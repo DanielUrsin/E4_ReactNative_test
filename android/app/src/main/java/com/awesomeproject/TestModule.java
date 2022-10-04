@@ -7,6 +7,10 @@ import com.facebook.react.bridge.ReactMethod;
 import java.util.Map;
 import java.util.HashMap;
 
+import com.facebook.react.modules.core.DeviceEventManagerModule;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.bridge.Arguments;
+
 
 import com.empatica.empalink.ConnectionNotAllowedException;
 import com.empatica.empalink.EmpaDeviceManager;
@@ -47,7 +51,7 @@ import androidx.core.content.ContextCompat;
 public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDelegate, EmpaStatusDelegate {
 
     private ReactApplicationContext thecontext = null;
-    Activity theactivity = getCurrentActivity();
+    private Activity theactivity = getCurrentActivity();
 
     TestModule(ReactApplicationContext reactContext) {
        super(reactContext);
@@ -61,7 +65,25 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
 
 //------------------------------------------------------------------------------------------------------------//
 
-    private static final String EMPATICA_API_KEY = "1fc5ffd1554f4901a77a1d8a08b4130e"; // TODO insert your API Key here
+
+    private void sendEvent(ReactApplicationContext reactContext, String eventName, WritableMap params) {
+        reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit(eventName, params);
+        return;
+    }
+    @ReactMethod
+    public void addListener(String eventName) {
+        // Set up any upstream listeners or background tasks as necessary
+    }
+
+    @ReactMethod
+    public void removeListeners(Integer count) {
+        // Remove upstream listeners, stop unnecessary background tasks
+    }
+
+
+//------------------------------------------------------------------------------------------------------------//
+
+    private String EMPATICA_API_KEY = "1fc5ffd1554f4901a77a1d8a08b4130e"; // TODO insert your API Key here
 
     private EmpaDeviceManager deviceManager = null;
     private int deviceOnWrist = -1;
@@ -69,6 +91,7 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
 
     @ReactMethod
     public boolean startEmpatica(){
+
         return initEmpaticaDeviceManager();
     }
 
@@ -127,10 +150,6 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
         boolean isBluetoothOn = BluetoothAdapter.getDefaultAdapter().isEnabled();
     }
 
-//    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-
-    }
 
     @Override
     public void didUpdateSensorStatus(@EmpaSensorStatus int status, EmpaSensorType type) {
@@ -145,8 +164,6 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
         if (status == EmpaStatus.READY) {
             // Start scanning
             deviceManager.startScanning();
-
-
         }
     }
 
@@ -180,11 +197,6 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
 
     }
 
-    // Update a label with some text, making sure this is run in the UI thread
-    private void updateLabel(final TextView label, final String text) {
-
-    }
-
     @Override
     public void didReceiveTag(double timestamp) {
 
@@ -199,12 +211,15 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
     @Override
     public void didUpdateOnWristStatus(@EmpaSensorStatus final int status) {
 
+        WritableMap params = Arguments.createMap();
+
         if (status == EmpaSensorStatus.ON_WRIST) {
-            this.deviceOnWrist = 1;
+            params.putString("status", "true");
         }
         else {
-            this.deviceOnWrist = 0;
+            params.putString("status", "false");
         }
+        sendEvent(thecontext, "EventOnWristStatus", params);
     }
 
 }

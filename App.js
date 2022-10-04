@@ -17,10 +17,19 @@ import { Text,
          NativeModules,
          PermissionsAndroid } from 'react-native';
 
+import { NativeEventEmitter } from 'react-native';
+
+import NetInfo from "@react-native-community/netinfo";
+
+
 
 
 
 const requestAllPermission = async () => {
+
+
+
+
     console.log("Requesting all")
     try {
         const granted1 = await PermissionsAndroid.request(
@@ -48,9 +57,32 @@ const requestAllPermission = async () => {
 
 };
 
+const CheckInternetConnection = async () => {
+
+
+
+}
+
 
 const App: () => Node = () => {
+    // var stat = false;
+    // NetInfo.fetch().then(state => {
+    //     stat = state.isConnected;
+    // });
+    // if (!stat){
+    //     return (<View><Text>No internet connection.</Text></View>);
+    // }
+    var count = 0;
 
+    const eventEmitter = new NativeEventEmitter(NativeModules.ToastExample);
+    this.eventListener = eventEmitter.addListener('EventOnWristStatus', (event) => {
+        // count++;
+        console.log(event.status) // "someValue"
+        // console.log(count) // "someValue"
+
+    });
+
+    var EMPATICA_API_KEY = "1fc5ffd1554f4901a77a1d8a08b4130e"; // TODO insert your API Key here
 
     function runEmpatica() {
         try{
@@ -80,13 +112,12 @@ const App: () => Node = () => {
 
 
 
-    var EMPATICA_API_KEY = "1fc5ffd1554f4901a77a1d8a08b4130e"; // TODO insert your API Key here
 
     const isDarkMode = useColorScheme() === 'dark';
 
-      const { TestModule } = NativeModules;
+    const { TestModule } = NativeModules;
 
-      var output = (
+    var output = (
           <View>
                 <Text>Try permissions</Text>
                 <Button title="Request Permissions" onPress={requestAllPermission} />
@@ -96,7 +127,7 @@ const App: () => Node = () => {
           </View>
       );
 
-  return output;
+    return output;
 };
 
 
