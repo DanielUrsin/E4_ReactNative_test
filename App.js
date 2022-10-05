@@ -6,15 +6,13 @@
  * @flow strict-local
  */
 const { TestModule } = NativeModules;
-import React from 'react';
+import React, {useState, useEffect} from 'react';
 import type {Node} from 'react';
 import { Text,
          Button,
-         useEffect,
-         useState,
-         useColorScheme,
          View,
          NativeModules,
+         useColorScheme,
          PermissionsAndroid } from 'react-native';
 
 import { NativeEventEmitter } from 'react-native';
@@ -58,31 +56,30 @@ const requestAllPermission = async () => {
 };
 
 const CheckInternetConnection = async () => {
+    var stat = 0;
+    NetInfo.fetch().then(state => {
+        if (state.isConnected){
+            stat = 1;
+        }
+        console.log("Is connected?", state.isConnected);
 
+    });
+
+    return stat;
 
 
 }
 
-
 const App: () => Node = () => {
-    // var stat = false;
-    // NetInfo.fetch().then(state => {
-    //     stat = state.isConnected;
-    // });
-    // if (!stat){
-    //     return (<View><Text>No internet connection.</Text></View>);
-    // }
-    var count = 0;
+
+    const [connected, setConnected] = useState(false);
+    NetInfo.fetch().then(state => setConnected(state.isConnected));
 
     const eventEmitter = new NativeEventEmitter(NativeModules.ToastExample);
     this.eventListener = eventEmitter.addListener('EventOnWristStatus', (event) => {
-        // count++;
-        console.log(event.status) // "someValue"
-        // console.log(count) // "someValue"
-
+        console.log(event.status)
     });
 
-    var EMPATICA_API_KEY = "1fc5ffd1554f4901a77a1d8a08b4130e"; // TODO insert your API Key here
 
     function runEmpatica() {
         try{
@@ -116,16 +113,22 @@ const App: () => Node = () => {
     const isDarkMode = useColorScheme() === 'dark';
 
     const { TestModule } = NativeModules;
+    var output = "";
+    if (!connected){
+        output = (<View><Text>No internet connection.{connected.toString()}</Text></View>);
+    }
+    else{
+        output = (
+            <View>
+            <Text>Try permissions</Text>
+            <Button title="Request Permissions" onPress={requestAllPermission} />
+            <Button title="Connect Device" onPress={runEmpatica} />
+            <Button title="Check Status" onPress={checkStatus} />
 
-    var output = (
-          <View>
-                <Text>Try permissions</Text>
-                <Button title="Request Permissions" onPress={requestAllPermission} />
-                <Button title="Connect Device" onPress={runEmpatica} />
-                <Button title="Check Status" onPress={checkStatus} />
+            </View>
+            );
+    }
 
-          </View>
-      );
 
     return output;
 };
