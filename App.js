@@ -72,14 +72,26 @@ const CheckInternetConnection = async () => {
 
 const App: () => Node = () => {
 
-    const [connected, setConnected] = useState(false);
-    NetInfo.fetch().then(state => setConnected(state.isConnected));
 
+
+    const [netConnection, setNetConnection] = useState(false);
+    NetInfo.fetch().then(state => setNetConnection(state.isConnected));
+
+    const [onWrist, setOnWrist] = useState(false);
+    const [connected, setConnected] = useState(false);
+
+
+    if(this.eventListener != null){
+        this.eventListener.remove();
+    }
     const eventEmitter = new NativeEventEmitter(NativeModules.ToastExample);
     this.eventListener = eventEmitter.addListener('EventOnWristStatus', (event) => {
-        console.log(event.status)
+        setOnWrist(event);
     });
-
+    this.eventListener = eventEmitter.addListener('EventConnected', (event) => {
+        setConnected(event);
+        console.log(event.toString())
+    });
 
     function runEmpatica() {
         try{
@@ -114,8 +126,8 @@ const App: () => Node = () => {
 
     const { TestModule } = NativeModules;
     var output = "";
-    if (!connected){
-        output = (<View><Text>No internet connection.{connected.toString()}</Text></View>);
+    if (!netConnection){
+        output = (<View><Text>No internet connection.{netConnection.toString()}</Text></View>);
     }
     else{
         output = (
@@ -124,6 +136,10 @@ const App: () => Node = () => {
             <Button title="Request Permissions" onPress={requestAllPermission} />
             <Button title="Connect Device" onPress={runEmpatica} />
             <Button title="Check Status" onPress={checkStatus} />
+            <Text>Connected: {connected.toString()}</Text>
+            <Text>On wrist: {onWrist.toString()}</Text>
+
+
 
             </View>
             );

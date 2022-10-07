@@ -66,7 +66,7 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
 //------------------------------------------------------------------------------------------------------------//
 
 
-    private void sendEvent(ReactApplicationContext reactContext, String eventName, WritableMap params) {
+    private void sendEvent(ReactApplicationContext reactContext, String eventName, Boolean params) {
         reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit(eventName, params);
         return;
     }
@@ -165,6 +165,14 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
             // Start scanning
             deviceManager.startScanning();
         }
+        if (status == EmpaStatus.CONNECTED){
+            sendEvent(thecontext, "EventConnected", true);
+        }
+        if (status == EmpaStatus.DISCONNECTED){
+            sendEvent(thecontext, "EventConnected", false);
+        }
+
+
     }
 
     @Override
@@ -204,22 +212,20 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
 
     @Override
     public void didEstablishConnection() {
-
+        sendEvent(thecontext, "EventConnected", true);
 
     }
 
     @Override
     public void didUpdateOnWristStatus(@EmpaSensorStatus final int status) {
 
-        WritableMap params = Arguments.createMap();
-
         if (status == EmpaSensorStatus.ON_WRIST) {
-            params.putString("status", "true");
+            sendEvent(thecontext, "EventOnWristStatus", true);
         }
         else {
-            params.putString("status", "false");
+            sendEvent(thecontext, "EventOnWristStatus", false);
         }
-        sendEvent(thecontext, "EventOnWristStatus", params);
+
     }
 
 }
