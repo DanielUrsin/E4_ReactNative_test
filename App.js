@@ -12,6 +12,7 @@ import { Text,
          Button,
          View,
          NativeModules,
+         Vibration,
          useColorScheme,
          PermissionsAndroid } from 'react-native';
 
@@ -24,9 +25,6 @@ import NetInfo from "@react-native-community/netinfo";
 
 
 const requestAllPermission = async () => {
-
-
-
 
     console.log("Requesting all")
     try {
@@ -55,24 +53,11 @@ const requestAllPermission = async () => {
 
 };
 
-const CheckInternetConnection = async () => {
-    var stat = 0;
-    NetInfo.fetch().then(state => {
-        if (state.isConnected){
-            stat = 1;
-        }
-        console.log("Is connected?", state.isConnected);
 
-    });
-
-    return stat;
-
-
-}
 
 const App: () => Node = () => {
 
-
+    var setup = true;
 
     const [netConnection, setNetConnection] = useState(false);
     NetInfo.fetch().then(state => setNetConnection(state.isConnected));
@@ -81,41 +66,43 @@ const App: () => Node = () => {
     const [connected, setConnected] = useState(false);
 
 
-    if(this.eventListener != null){
-        this.eventListener.remove();
+    if(setup){
+        const eventEmitter = new NativeEventEmitter(NativeModules.ToastExample);
+        this.eventListener = eventEmitter.addListener('EventOnWristStatus', (event) => {
+            setOnWrist(event);
+        });
+        this.eventListener = eventEmitter.addListener('EventConnected', (event) => {
+            setConnected(event);
+        });
+        this.eventListener = eventEmitter.addListener('EventButtonPress', (event) => {
+            Vibration.vibrate(200);
+        });
+        setup = false;
     }
-    const eventEmitter = new NativeEventEmitter(NativeModules.ToastExample);
-    this.eventListener = eventEmitter.addListener('EventOnWristStatus', (event) => {
-        setOnWrist(event);
-    });
-    this.eventListener = eventEmitter.addListener('EventConnected', (event) => {
-        setConnected(event);
-        console.log(event.toString())
-    });
 
     function runEmpatica() {
         try{
-            var a = false;
-            a = TestModule.startEmpatica();
-            console.log(true);
-            return a;
+            console.log("Launching");
+            var a = TestModule.startEmpatica();
+            console.log("Connected");
+
         }
         catch (err) {
             console.warn(err);
-            console.log(false);
-            return false;
+            console.log("Failed to launch");
         }
     }
-    const checkStatus = async () =>{
-        var status = await TestModule.getStatus();
-        if (status == 1){
-            status = "On wrist";
+    function stopEmpatica() {
+        try{
+            TestModule.stopEmpatica()
+            console.log("Stopped");
         }
-        else{
-            status = "Not on wrist";
+        catch (err) {
+            console.warn(err);
+            console.log("Failed to stop");
         }
-        console.log(status);
     }
+
 
 
 
@@ -127,7 +114,7 @@ const App: () => Node = () => {
     const { TestModule } = NativeModules;
     var output = "";
     if (!netConnection){
-        output = (<View><Text>No internet connection.{netConnection.toString()}</Text></View>);
+        output = (<View><Text>No internet connection: netConnection={netConnection.toString()}</Text></View>);
     }
     else{
         output = (
@@ -135,7 +122,7 @@ const App: () => Node = () => {
             <Text>Try permissions</Text>
             <Button title="Request Permissions" onPress={requestAllPermission} />
             <Button title="Connect Device" onPress={runEmpatica} />
-            <Button title="Check Status" onPress={checkStatus} />
+            <Button title="Disconnect Device" onPress={stopEmpatica} />
             <Text>Connected: {connected.toString()}</Text>
             <Text>On wrist: {onWrist.toString()}</Text>
 
