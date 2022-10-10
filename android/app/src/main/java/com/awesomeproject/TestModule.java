@@ -53,6 +53,11 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
     private ReactApplicationContext thecontext = null;
     private Activity theactivity = getCurrentActivity();
 
+    private String statusEventName = "EventStatus";
+    private String onWristEventName = "EventOnWrist";
+    private String newDeviceEventName = "EventNewDevice";
+    private String temperatureEventName = "EventTemperature";
+
     TestModule(ReactApplicationContext reactContext) {
        super(reactContext);
        this.thecontext = reactContext;
@@ -91,13 +96,20 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
 
     @ReactMethod
     public void startEmpatica(){
-
-        if (deviceManager == null){
-            initEmpaticaDeviceManager();
+        sendEvent(thecontext, statusEventName, "Readying ... ");
+        try {
+            if (deviceManager == null){
+                deviceManager = new EmpaDeviceManager(thecontext, TestModule.this, TestModule.this);
+            }
+            deviceManager.authenticateWithAPIKey(EMPATICA_API_KEY);
+        }
+        catch(Exception e){
+            sendEvent(thecontext, statusEventName, "Readying failed: "+e.toString());
         }
     }
 
-    @ReactMethod//(isBlockingSynchronousMethod = true)
+
+    @ReactMethod
     public void stopEmpatica(){
 
         if (deviceManager != null) {
@@ -106,27 +118,13 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
     }
 
 
-    private boolean initEmpaticaDeviceManager() {
-
-        try {
-            deviceManager = new EmpaDeviceManager(thecontext, TestModule.this, TestModule.this);
-            deviceManager.authenticateWithAPIKey(EMPATICA_API_KEY);
-            return true;
-        }
-        catch(Exception e){
-            return false;
-        }
-
-    }
-
-
     @Override
     public void didDiscoverDevice(EmpaticaDevice bluetoothDevice, String deviceName, int rssi, boolean allowed) {
         // Check if the discovered device can be used with your API key. If allowed is always false,
         // the device is not linked with your API key. Please check your developer area at
         // https://www.empatica.com/connect/developer.php
-        sendEvent(thecontext, "EventConnected", "Discovered");
         if (allowed) {
+            sendEvent(thecontext, newDeviceEventName, deviceName);
             // Stop scanning. The first allowed device will do.
             deviceManager.stopScanning();
             try {
@@ -135,98 +133,38 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
 
             } catch (ConnectionNotAllowedException e) {
                 // This should happen only if you try to connect when allowed == false.
+                sendEvent(thecontext, statusEventName, "Device connection failed .. ");
 
             }
         }
+        else{
+            sendEvent(thecontext, statusEventName, deviceName+" not allowed");
+        }
     }
 
-    @Override
-    public void didFailedScanning(int errorCode) {
-
-    }
-    @Override
-    public void didRequestEnableBluetooth() {
-        // Request the user to enable Bluetooth
-    }
-
-    @Override
-    public void bluetoothStateChanged() {
-        boolean isBluetoothOn = BluetoothAdapter.getDefaultAdapter().isEnabled();
-    }
-
-
-    @Override
-    public void didUpdateSensorStatus(@EmpaSensorStatus int status, EmpaSensorType type) {
-
-        didUpdateOnWristStatus(status);
-    }
 
     @Override
     public void didUpdateStatus(EmpaStatus status) {
 
         // The device manager is ready for use
         if (status == EmpaStatus.READY) {
-            // Start scanning
-            sendEvent(thecontext, "EventConnected", "Scanning");
+            sendEvent(thecontext, statusEventName, "Scanning ... ");
             deviceManager.startScanning();
         }
         else if (status == EmpaStatus.CONNECTED){
-            sendEvent(thecontext, "EventConnected", "true");
+            sendEvent(thecontext, statusEventName, "Connected");
         }
         else if (status == EmpaStatus.DISCONNECTED){
-            sendEvent(thecontext, "EventConnected", "false");
+            sendEvent(thecontext, statusEventName, "Disconnected");
+            deviceManager = null;
+            sendEvent(thecontext, newDeviceEventName, "No device connected");
         }
         else if (status == EmpaStatus.CONNECTING){
-            sendEvent(thecontext, "EventConnected", "Connecting");
+            sendEvent(thecontext, statusEventName, "Connecting ... ");
         }
         else if (status == EmpaStatus.DISCONNECTING){
-            sendEvent(thecontext, "EventConnected", "Disconnecting");
+            sendEvent(thecontext, statusEventName, "Disconnecting ... ");
         }
-
-    }
-
-    @Override
-    public void didReceiveAcceleration(int x, int y, int z, double timestamp) {
-        sendEvent(thecontext, "EventAcceleration", "true");
-    }
-
-    @Override
-    public void didReceiveBVP(float bvp, double timestamp) {
-        sendEvent(thecontext, "EventBVP", "true");
-
-    }
-
-    @Override
-    public void didReceiveBatteryLevel(float battery, double timestamp) {
-        sendEvent(thecontext, "EventBattery", "true");
-
-    }
-
-    @Override
-    public void didReceiveGSR(float gsr, double timestamp) {
-        sendEvent(thecontext, "EventGSR", "true");
-
-    }
-
-    @Override
-    public void didReceiveIBI(float ibi, double timestamp) {
-        sendEvent(thecontext, "EventIBI", "true");
-
-    }
-
-    @Override
-    public void didReceiveTemperature(float temp, double timestamp) {
-        sendEvent(thecontext, "EventTemp", "true");
-    }
-
-    @Override
-    public void didReceiveTag(double timestamp) {
-        sendEvent(thecontext, "EventButtonPress", "true");
-    }
-
-    @Override
-    public void didEstablishConnection() {
-        sendEvent(thecontext, "EventConnected", "true");
 
     }
 
@@ -234,12 +172,62 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
     public void didUpdateOnWristStatus(@EmpaSensorStatus final int status) {
 
         if (status == EmpaSensorStatus.ON_WRIST) {
-            sendEvent(thecontext, "EventOnWristStatus", "true");
+            sendEvent(thecontext, onWristEventName, "true");
         }
         else {
-            sendEvent(thecontext, "EventOnWristStatus", "false");
+            sendEvent(thecontext, onWristEventName, "false");
         }
 
+    }
+
+
+
+
+
+    @Override
+    public void didFailedScanning(int errorCode) {
+    }
+    @Override
+    public void didRequestEnableBluetooth() {
+    }
+    @Override
+    public void bluetoothStateChanged() {
+    }
+    @Override
+    public void didUpdateSensorStatus(@EmpaSensorStatus int status, EmpaSensorType type) {
+        didUpdateOnWristStatus(status);
+    }
+    @Override
+    public void didReceiveAcceleration(int x, int y, int z, double timestamp) {
+        sendEvent(thecontext, "EventAcceleration", "true");
+    }
+    @Override
+    public void didReceiveBVP(float bvp, double timestamp) {
+        sendEvent(thecontext, "EventBVP", "true");
+    }
+    @Override
+    public void didReceiveBatteryLevel(float battery, double timestamp) {
+        sendEvent(thecontext, "EventBattery", "true");
+    }
+    @Override
+    public void didReceiveGSR(float gsr, double timestamp) {
+        sendEvent(thecontext, "EventGSR", "true");
+    }
+    @Override
+    public void didReceiveIBI(float ibi, double timestamp) {
+        sendEvent(thecontext, "EventIBI", "true");
+    }
+    @Override
+    public void didReceiveTemperature(float temp, double timestamp) {
+        sendEvent(thecontext, temperatureEventName, Float.toString(temp));
+    }
+    @Override
+    public void didReceiveTag(double timestamp) {
+        sendEvent(thecontext, "EventButtonPress", "true");
+    }
+    @Override
+    public void didEstablishConnection() {
+        sendEvent(thecontext, statusEventName, "Connected");
     }
 
 }

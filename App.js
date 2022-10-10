@@ -60,22 +60,29 @@ const App: () => Node = () => {
     var setup = true;
 
     const [netConnection, setNetConnection] = useState(false);
-    NetInfo.fetch().then(state => setNetConnection(state.isConnected));
-
     const [onWrist, setOnWrist] = useState(false);
-    const [connected, setConnected] = useState(false);
+    const [status, setStatus] = useState("Not connected");
+    const [deviceName, setDeviceName] = useState("No device connected");
+    const [temperature, setTemperature] = useState("-1");
 
+    NetInfo.fetch().then(state => setNetConnection(state.isConnected));
 
     if(setup){
         const eventEmitter = new NativeEventEmitter(NativeModules.ToastExample);
-        this.eventListener = eventEmitter.addListener('EventOnWristStatus', (event) => {
+        this.eventListener = eventEmitter.addListener('EventOnWrist', (event) => {
             setOnWrist(event);
         });
-        this.eventListener = eventEmitter.addListener('EventConnected', (event) => {
-            setConnected(event);
+        this.eventListener = eventEmitter.addListener('EventStatus', (event) => {
+            setStatus(event);
         });
         this.eventListener = eventEmitter.addListener('EventButtonPress', (event) => {
             Vibration.vibrate(200);
+        });
+        this.eventListener = eventEmitter.addListener('EventNewDevice', (event) => {
+            setDeviceName(event);
+        });
+        this.eventListener = eventEmitter.addListener('EventTemperature', (event) => {
+            setTemperature(event);
         });
         setup = false;
     }
@@ -105,26 +112,21 @@ const App: () => Node = () => {
 
 
 
-
-
-
-
     const isDarkMode = useColorScheme() === 'dark';
-
-    const { TestModule } = NativeModules;
-    var output = "";
     if (!netConnection){
-        output = (<View><Text>No internet connection: netConnection={netConnection.toString()}</Text></View>);
+        return(<View><Text>No internet connection: netConnection={netConnection.toString()}</Text></View>);
     }
     else{
-        output = (
+        return(
             <View>
-            <Text>Try permissions</Text>
-            <Button title="Request Permissions" onPress={requestAllPermission} />
-            <Button title="Connect Device" onPress={runEmpatica} />
-            <Button title="Disconnect Device" onPress={stopEmpatica} />
-            <Text>Connected: {connected.toString()}</Text>
-            <Text>On wrist: {onWrist.toString()}</Text>
+                <Text>Try permissions</Text>
+                <Button title="Request Permissions" onPress={requestAllPermission} />
+                <Button title="Connect Device" onPress={runEmpatica} />
+                <Button title="Disconnect Device" onPress={stopEmpatica} />
+                <Text>Status: {status}</Text>
+                <Text>On wrist: {onWrist.toString()}</Text>
+                <Text>Device: {deviceName}</Text>
+                <Text>Temp: {temperature}</Text>
 
 
 
@@ -132,8 +134,6 @@ const App: () => Node = () => {
             );
     }
 
-
-    return output;
 };
 
 
