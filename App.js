@@ -6,7 +6,9 @@
  * @flow strict-local
  */
 const { TestModule } = NativeModules;
-import React, {useState, useEffect} from 'react';
+import { NativeEventEmitter } from 'react-native';
+import NetInfo from "@react-native-community/netinfo";
+import React, {useState, useEffect, Component} from 'react';
 import type {Node} from 'react';
 import { Text,
          Button,
@@ -15,12 +17,6 @@ import { Text,
          Vibration,
          useColorScheme,
          PermissionsAndroid } from 'react-native';
-
-import { NativeEventEmitter } from 'react-native';
-
-import NetInfo from "@react-native-community/netinfo";
-
-
 
 
 
@@ -53,46 +49,54 @@ const requestAllPermission = async () => {
 
 };
 
-
+var eventListener1 = null;
+var eventListener2 = null;
+var eventListener3 = null;
+var eventListener4 = null;
+var eventListener5 = null;
+var eventListener6 = null;
 
 const App: () => Node = () => {
 
-    var setup = true;
+
+    const [ext_temp_events, setExt_temp_events] = useState(0);
+    const [int_temp_events, setInt_temp_events] = useState(0);
 
     const [netConnection, setNetConnection] = useState(false);
-    const [onWrist, setOnWrist] = useState(false);
+    const [onWrist, setOnWrist] = useState("false");
     const [status, setStatus] = useState("Not connected");
     const [deviceName, setDeviceName] = useState("No device connected");
     const [temperature, setTemperature] = useState("-1");
+    const [count, setCount] = useState(0);
+    const [latestTime, setLatestTime] = useState("");
+    const [init, setInit]= useState(true);
+    var løk = 0;
 
     NetInfo.fetch().then(state => setNetConnection(state.isConnected));
 
-    if(setup){
-        const eventEmitter = new NativeEventEmitter(NativeModules.ToastExample);
-        this.eventListener = eventEmitter.addListener('EventOnWrist', (event) => {
-            setOnWrist(event);
-        });
-        this.eventListener = eventEmitter.addListener('EventStatus', (event) => {
-            setStatus(event);
-        });
-        this.eventListener = eventEmitter.addListener('EventButtonPress', (event) => {
+    const empaticaEvents = new NativeEventEmitter(NativeModules.ToastExample);
+
+
+    if(init){
+        eventListener1 = empaticaEvents.addListener('EventOnWrist', (event) => {setOnWrist(event);});
+        eventListener2 = empaticaEvents.addListener('EventStatus', (event) => {setStatus(event);});
+        eventListener4 = empaticaEvents.addListener('EventTemperature', (event) => {setTemperature(event);});
+        eventListener5 = empaticaEvents.addListener('EventNewDevice', (event) => {setDeviceName(event);});
+        eventListener6 = empaticaEvents.addListener('EventButtonPressCount', (event) => {setCount(event);});
+        eventListener3 = empaticaEvents.addListener('EventButtonPress', (event) => {
             Vibration.vibrate(200);
+            setLatestTime(event);
+            løk++;
+            console.log(løk);
+            console.log("løk");
         });
-        this.eventListener = eventEmitter.addListener('EventNewDevice', (event) => {
-            setDeviceName(event);
-        });
-        this.eventListener = eventEmitter.addListener('EventTemperature', (event) => {
-            setTemperature(event);
-        });
-        setup = false;
+        setInit(false);
     }
+
 
     function runEmpatica() {
         try{
-            console.log("Launching");
-            var a = TestModule.startEmpatica();
-            console.log("Connected");
-
+            TestModule.startEmpatica();
         }
         catch (err) {
             console.warn(err);
@@ -102,14 +106,12 @@ const App: () => Node = () => {
     function stopEmpatica() {
         try{
             TestModule.stopEmpatica()
-            console.log("Stopped");
         }
         catch (err) {
             console.warn(err);
             console.log("Failed to stop");
         }
     }
-
 
 
     const isDarkMode = useColorScheme() === 'dark';
@@ -124,16 +126,14 @@ const App: () => Node = () => {
                 <Button title="Connect Device" onPress={runEmpatica} />
                 <Button title="Disconnect Device" onPress={stopEmpatica} />
                 <Text>Status: {status}</Text>
-                <Text>On wrist: {onWrist.toString()}</Text>
+                <Text>On wrist: {onWrist}</Text>
                 <Text>Device: {deviceName}</Text>
                 <Text>Temp: {temperature}</Text>
-
-
-
+                <Text>ButtonPressCount: {count}</Text>
+                <Text>Latest button press: {latestTime}</Text>
             </View>
             );
     }
-
 };
 
 

@@ -57,6 +57,7 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
     private String onWristEventName = "EventOnWrist";
     private String newDeviceEventName = "EventNewDevice";
     private String temperatureEventName = "EventTemperature";
+    private int buttonPressCount = 0;
 
     TestModule(ReactApplicationContext reactContext) {
        super(reactContext);
@@ -69,7 +70,6 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
     }
 
 //------------------------------------------------------------------------------------------------------------//
-
 
     private void sendEvent(ReactApplicationContext reactContext, String eventName, String params) {
         reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit(eventName, params);
@@ -85,6 +85,7 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
         // Remove upstream listeners, stop unnecessary background tasks
     }
 
+//------------------------------------------------------------------------------------------------------------//
 
 //------------------------------------------------------------------------------------------------------------//
 
@@ -158,6 +159,7 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
             sendEvent(thecontext, statusEventName, "Disconnected");
             deviceManager = null;
             sendEvent(thecontext, newDeviceEventName, "No device connected");
+            sendEvent(thecontext, newDeviceEventName, "No device connected");
         }
         else if (status == EmpaStatus.CONNECTING){
             sendEvent(thecontext, statusEventName, "Connecting ... ");
@@ -223,7 +225,10 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
     }
     @Override
     public void didReceiveTag(double timestamp) {
-        sendEvent(thecontext, "EventButtonPress", "true");
+        this.buttonPressCount += 1;
+        String tempTime = String.format("%.0f", timestamp);
+        sendEvent(thecontext, "EventButtonPress", tempTime);
+        sendEvent(thecontext, "EventButtonPressCount", String.valueOf(this.buttonPressCount));
     }
     @Override
     public void didEstablishConnection() {
