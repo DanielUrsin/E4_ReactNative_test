@@ -255,6 +255,7 @@ dependencies {
 
     implementation 'com.empatica.empalink:E4link:1.0.0@aar'
     implementation 'com.squareup.okhttp:okhttp:2.7.5'
+    implementation "androidx.core:core:1.6.0"
 
     //// define a BOM and its version
     // implementation(platform("com.squareup.okhttp3:okhttp-bom:4.10.0"))

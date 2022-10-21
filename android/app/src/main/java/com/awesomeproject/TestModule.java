@@ -1,4 +1,6 @@
 package com.awesomeproject; // replace com.your-app-name with your app’s name
+import static android.provider.Settings.System.getString;
+
 import com.facebook.react.bridge.NativeModule;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContext;
@@ -22,8 +24,10 @@ import com.empatica.empalink.delegate.EmpaDataDelegate;
 import com.empatica.empalink.delegate.EmpaStatusDelegate;
 
 import android.Manifest;
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.NotificationManager;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.le.ScanCallback;
 import android.content.DialogInterface;
@@ -42,14 +46,17 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.app.NotificationCompat;
 
 
 
 public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDelegate, EmpaStatusDelegate {
 
+    private static final String CHANNEL_ID = "1";
     private ReactApplicationContext thecontext = null;
     private Activity theactivity = getCurrentActivity();
 
@@ -58,6 +65,7 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
     private String newDeviceEventName = "EventNewDevice";
     private String temperatureEventName = "EventTemperature";
     private int buttonPressCount = 0;
+
 
     TestModule(ReactApplicationContext reactContext) {
        super(reactContext);
@@ -70,6 +78,7 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
     }
 
 //------------------------------------------------------------------------------------------------------------//
+
 
     private void sendEvent(ReactApplicationContext reactContext, String eventName, String params) {
         reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit(eventName, params);
@@ -95,8 +104,11 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
     private int deviceOnWrist = -1;
 
 
+
     @ReactMethod
     public void startEmpatica(){
+
+
         sendEvent(thecontext, statusEventName, "Readying ... ");
         try {
             if (deviceManager == null){
@@ -159,7 +171,7 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
             sendEvent(thecontext, statusEventName, "Disconnected");
             deviceManager = null;
             sendEvent(thecontext, newDeviceEventName, "No device connected");
-            sendEvent(thecontext, newDeviceEventName, "No device connected");
+
         }
         else if (status == EmpaStatus.CONNECTING){
             sendEvent(thecontext, statusEventName, "Connecting ... ");
@@ -232,6 +244,7 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
     }
     @Override
     public void didEstablishConnection() {
+
         sendEvent(thecontext, statusEventName, "Connected");
     }
 

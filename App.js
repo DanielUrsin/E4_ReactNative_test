@@ -5,10 +5,12 @@
  * @format
  * @flow strict-local
  */
+import React, {useState, useEffect, Component} from 'react';
 const { TestModule } = NativeModules;
 import { NativeEventEmitter } from 'react-native';
+
+
 import NetInfo from "@react-native-community/netinfo";
-import React, {useState, useEffect, Component} from 'react';
 import type {Node} from 'react';
 import { Text,
          Button,
@@ -18,6 +20,7 @@ import { Text,
          useColorScheme,
          PermissionsAndroid } from 'react-native';
 
+import notifee from '@notifee/react-native';
 
 
 const requestAllPermission = async () => {
@@ -56,8 +59,36 @@ var eventListener4 = null;
 var eventListener5 = null;
 var eventListener6 = null;
 
+
+
+
+
 const App: () => Node = () => {
 
+    async function DisplayNotification() {
+
+        // Create a channel (required for Android)
+        const channelId = await notifee.createChannel({
+            id: 'default',
+            name: 'Default Channel',
+        });
+
+        console.log("NOTIFICATION");
+        // Display a notification
+        await notifee.displayNotification({
+            title: 'Notification Title',
+            body: 'Main body content of the notification',
+            android: {
+                channelId,
+                // smallIcon: 'name-of-a-small-icon', // optional, defaults to 'ic_launcher'.
+                // pressAction is needed if you want the notification to open the app when pressed
+                pressAction: {
+                    id: 'default',
+                },
+            },
+        });
+
+    };
 
     const [ext_temp_events, setExt_temp_events] = useState(0);
     const [int_temp_events, setInt_temp_events] = useState(0);
@@ -86,9 +117,6 @@ const App: () => Node = () => {
         eventListener3 = empaticaEvents.addListener('EventButtonPress', (event) => {
             Vibration.vibrate(200);
             setLatestTime(event);
-            løk++;
-            console.log(løk);
-            console.log("løk");
         });
         setInit(false);
     }
@@ -125,6 +153,7 @@ const App: () => Node = () => {
                 <Button title="Request Permissions" onPress={requestAllPermission} />
                 <Button title="Connect Device" onPress={runEmpatica} />
                 <Button title="Disconnect Device" onPress={stopEmpatica} />
+                <Button title="Display notification" onPress={() => DisplayNotification()} />
                 <Text>Status: {status}</Text>
                 <Text>On wrist: {onWrist}</Text>
                 <Text>Device: {deviceName}</Text>
