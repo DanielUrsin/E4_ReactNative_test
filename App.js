@@ -12,13 +12,15 @@ import { NativeEventEmitter } from 'react-native';
 
 import NetInfo from "@react-native-community/netinfo";
 import type {Node} from 'react';
-import { Text,
-         Button,
-         View,
-         NativeModules,
-         Vibration,
-         useColorScheme,
-         PermissionsAndroid } from 'react-native';
+import {
+    Text,
+    Button,
+    View,
+    NativeModules,
+    Vibration,
+    useColorScheme,
+    PermissionsAndroid,
+    Platform, } from 'react-native';
 
 import notifee from '@notifee/react-native';
 
@@ -26,26 +28,58 @@ import notifee from '@notifee/react-native';
 const requestAllPermission = async () => {
 
     console.log("Requesting all")
-    try {
-        const granted1 = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN
-        );
-        const granted2 = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT
-        );
+    const os_version = Platform.constants['Release'];
+    var result1 = null;
+    var result2 = null;
+    var result3 = null;
 
+    if (os_version < 12){
+        try {
+            // const granted1 = await PermissionsAndroid.request(
+            //     PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN
+            // );
+            const granted2 = await PermissionsAndroid.request(
+                PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+            );
+            // const granted3 = await PermissionsAndroid.request(
+            //     PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT
+            // );
+            result1 = true;
+            result3 = true;
+
+            // result1 =  await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN);
+            result2 =  await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+            // result3 =  await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT);
+
+        }
+        catch (err) {
+            console.warn(err);
+        }
     }
-    catch (err) {
-        console.warn(err);
+    else {
+        result3 = true;
+        try {
+            const granted1 = await PermissionsAndroid.request(
+                PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN
+            );
+            const granted2 = await PermissionsAndroid.request(
+                PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT
+            );
+            result1 =  await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN);
+            result2 =  await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT);
+
+        }
+        catch (err) {
+            console.warn(err);
+        }
     }
-    var result1 =  await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN);
-    var result2 =  await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT);
-    if (result1 && result2) {
-        console.log("All granted");
+
+    if (result1 && result2 && result3) {
+        console.log("version "+os_version+". All granted");
         return true;
     }
     else {
-        console.log("You don't have all permissions!");
+        console.log("version "+os_version+". You don't have all permissions!");
         return false;
     }
 
