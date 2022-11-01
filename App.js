@@ -29,27 +29,18 @@ const requestAllPermission = async () => {
 
     console.log("Requesting all")
     const os_version = Platform.constants['Release'];
-    var result1 = null;
-    var result2 = null;
-    var result3 = null;
+    var result1 = false;
+    var result2 = false;
+
 
     if (os_version < 12){
         try {
-            // const granted1 = await PermissionsAndroid.request(
-            //     PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN
-            // );
             const granted2 = await PermissionsAndroid.request(
                 PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
             );
-            // const granted3 = await PermissionsAndroid.request(
-            //     PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT
-            // );
-            result1 = true;
-            result3 = true;
 
-            // result1 =  await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN);
+            result1 = true;
             result2 =  await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
-            // result3 =  await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT);
 
         }
         catch (err) {
@@ -57,7 +48,6 @@ const requestAllPermission = async () => {
         }
     }
     else {
-        result3 = true;
         try {
             const granted1 = await PermissionsAndroid.request(
                 PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN
@@ -71,11 +61,12 @@ const requestAllPermission = async () => {
         }
         catch (err) {
             console.warn(err);
+            return false;
         }
     }
 
-    if (result1 && result2 && result3) {
-        console.log("version "+os_version+". All granted");
+    if (result1 && result2) {
+        console.log("version "+os_version+". All permissions granted.");
         return true;
     }
     else {
@@ -92,6 +83,7 @@ var eventListener3 = null;
 var eventListener4 = null;
 var eventListener5 = null;
 var eventListener6 = null;
+var eventListener7 = null;
 
 
 
@@ -99,7 +91,14 @@ var eventListener6 = null;
 
 const App: () => Node = () => {
 
-    async function DisplayNotification() {
+    // handling app events when app is not in focus
+    // See: https://notifee.app/react-native/docs/events
+    notifee.onBackgroundEvent(async ({type, detail}) => {
+
+    });
+
+
+    async function DisplayNotConnectedNotification(input) {
 
         // Create a channel (required for Android)
         const channelId = await notifee.createChannel({
@@ -110,9 +109,10 @@ const App: () => Node = () => {
         console.log("NOTIFICATION");
         // Display a notification
         await notifee.displayNotification({
-            title: 'Notification Title',
-            body: 'Main body content of the notification',
+            title: 'Device disconnected',
+            body: 'Reconnect device to resume monitoring.',
             android: {
+                ongoing: true,
                 channelId,
                 // smallIcon: 'name-of-a-small-icon', // optional, defaults to 'ic_launcher'.
                 // pressAction is needed if you want the notification to open the app when pressed
@@ -121,6 +121,7 @@ const App: () => Node = () => {
                 },
             },
         });
+        return true;
 
     };
 
@@ -135,7 +136,6 @@ const App: () => Node = () => {
     const [count, setCount] = useState(0);
     const [latestTime, setLatestTime] = useState("");
     const [init, setInit]= useState(true);
-    var løk = 0;
 
     NetInfo.fetch().then(state => setNetConnection(state.isConnected));
 
@@ -145,14 +145,19 @@ const App: () => Node = () => {
     if(init){
         eventListener1 = empaticaEvents.addListener('EventOnWrist', (event) => {setOnWrist(event);});
         eventListener2 = empaticaEvents.addListener('EventStatus', (event) => {setStatus(event);});
-        eventListener4 = empaticaEvents.addListener('EventTemperature', (event) => {setTemperature(event);});
-        eventListener5 = empaticaEvents.addListener('EventNewDevice', (event) => {setDeviceName(event);});
-        eventListener6 = empaticaEvents.addListener('EventButtonPressCount', (event) => {setCount(event);});
         eventListener3 = empaticaEvents.addListener('EventButtonPress', (event) => {
             Vibration.vibrate(200);
+            // DisplayNotification();
             setLatestTime(event);
         });
         setInit(false);
+        eventListener4 = empaticaEvents.addListener('EventTemperature', (event) => {setTemperature(event);});
+        eventListener5 = empaticaEvents.addListener('EventNewDevice', (event) => {setDeviceName(event);});
+        eventListener6 = empaticaEvents.addListener('EventButtonPressCount', (event) => {setCount(event);});
+        eventListener7 = empaticaEvents.addListener('EventDisconnected', (event) => {
+
+            DisplayNotConnectedNotification();
+        });
     }
 
 

@@ -63,6 +63,7 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
     private String statusEventName = "EventStatus";
     private String onWristEventName = "EventOnWrist";
     private String newDeviceEventName = "EventNewDevice";
+    private String disconnectedEventName = "EventDisconnected";
     private String temperatureEventName = "EventTemperature";
     private int buttonPressCount = 0;
 
@@ -98,7 +99,7 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
 
 //------------------------------------------------------------------------------------------------------------//
 
-    private String EMPATICA_API_KEY = "1fc5ffd1554f4901a77a1d8a08b4130e"; // TODO insert your API Key here
+    private String EMPATICA_API_KEY = "1fc5ffd1554f4901a77a1d8a08b4130e";
 
     private EmpaDeviceManager deviceManager = null;
     private int deviceOnWrist = -1;
@@ -107,7 +108,6 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
 
     @ReactMethod
     public void startEmpatica(){
-
 
         sendEvent(thecontext, statusEventName, "Readying ... ");
         try {
@@ -169,8 +169,10 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
         }
         else if (status == EmpaStatus.DISCONNECTED){
             sendEvent(thecontext, statusEventName, "Disconnected");
-            deviceManager = null;
+            sendEvent(thecontext, disconnectedEventName, "Disconnected");
             sendEvent(thecontext, newDeviceEventName, "No device connected");
+            deviceManager.cleanUp();
+            deviceManager = null;
 
         }
         else if (status == EmpaStatus.CONNECTING){
@@ -193,9 +195,6 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
         }
 
     }
-
-
-
 
 
     @Override
