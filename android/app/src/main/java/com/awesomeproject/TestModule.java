@@ -62,9 +62,11 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
 
     private String statusEventName = "EventStatus";
     private String onWristEventName = "EventOnWrist";
+    private String offWristEventName = "EventOffWrist";
     private String newDeviceEventName = "EventNewDevice";
     private String disconnectedEventName = "EventDisconnected";
     private String temperatureEventName = "EventTemperature";
+    private String connectedEventName = "EventConnected";
     private int buttonPressCount = 0;
 
 
@@ -109,12 +111,12 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
     @ReactMethod
     public void startEmpatica(){
 
-        sendEvent(thecontext, statusEventName, "Readying ... ");
         try {
             if (deviceManager == null){
+                sendEvent(thecontext, statusEventName, "Readying ... ");
                 deviceManager = new EmpaDeviceManager(thecontext, TestModule.this, TestModule.this);
+                deviceManager.authenticateWithAPIKey(EMPATICA_API_KEY);
             }
-            deviceManager.authenticateWithAPIKey(EMPATICA_API_KEY);
         }
         catch(Exception e){
             sendEvent(thecontext, statusEventName, "Readying failed: "+e.toString());
@@ -127,6 +129,7 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
 
         if (deviceManager != null) {
             deviceManager.disconnect();
+            deviceManager = null;
         }
     }
 
@@ -166,12 +169,13 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
         }
         else if (status == EmpaStatus.CONNECTED){
             sendEvent(thecontext, statusEventName, "Connected");
+            sendEvent(thecontext, connectedEventName, "Connected");
+
         }
         else if (status == EmpaStatus.DISCONNECTED){
             sendEvent(thecontext, statusEventName, "Disconnected");
             sendEvent(thecontext, disconnectedEventName, "Disconnected");
             sendEvent(thecontext, newDeviceEventName, "No device connected");
-            deviceManager.cleanUp();
             deviceManager = null;
 
         }
@@ -188,10 +192,11 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
     public void didUpdateOnWristStatus(@EmpaSensorStatus final int status) {
 
         if (status == EmpaSensorStatus.ON_WRIST) {
-            sendEvent(thecontext, onWristEventName, "true");
+            sendEvent(thecontext, onWristEventName, "True");
+
         }
         else {
-            sendEvent(thecontext, onWristEventName, "false");
+            sendEvent(thecontext, offWristEventName, "False");
         }
 
     }

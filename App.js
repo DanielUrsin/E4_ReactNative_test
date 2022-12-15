@@ -8,7 +8,7 @@
 import React, {useState, useEffect, Component} from 'react';
 const { TestModule } = NativeModules;
 import { NativeEventEmitter } from 'react-native';
-
+import notifee from '@notifee/react-native';
 
 import NetInfo from "@react-native-community/netinfo";
 import type {Node} from 'react';
@@ -22,7 +22,6 @@ import {
     PermissionsAndroid,
     Platform, } from 'react-native';
 
-import notifee from '@notifee/react-native';
 
 
 const requestAllPermission = async () => {
@@ -31,6 +30,7 @@ const requestAllPermission = async () => {
     const os_version = Platform.constants['Release'];
     var result1 = false;
     var result2 = false;
+    var result3 = false;
 
 
     if (os_version < 12){
@@ -41,6 +41,7 @@ const requestAllPermission = async () => {
 
             result1 = true;
             result2 =  await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+            result3 =  await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATION);
 
         }
         catch (err) {
@@ -55,8 +56,12 @@ const requestAllPermission = async () => {
             const granted2 = await PermissionsAndroid.request(
                 PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT
             );
+            const granted3 = await PermissionsAndroid.request(
+                PermissionsAndroid.PERMISSIONS.POST_NOTIFICATION
+            );
             result1 =  await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN);
             result2 =  await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT);
+            result3 =  await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATION);
 
         }
         catch (err) {
@@ -65,7 +70,7 @@ const requestAllPermission = async () => {
         }
     }
 
-    if (result1 && result2) {
+    if (result1 && result2 && result2) {
         console.log("version "+os_version+". All permissions granted.");
         return true;
     }
@@ -84,6 +89,7 @@ var eventListener4 = null;
 var eventListener5 = null;
 var eventListener6 = null;
 var eventListener7 = null;
+var eventListener10 = null;
 
 
 
@@ -91,30 +97,34 @@ var eventListener7 = null;
 
 const App: () => Node = () => {
 
+
+
     // handling app events when app is not in focus
     // See: https://notifee.app/react-native/docs/events
     notifee.onBackgroundEvent(async ({type, detail}) => {
 
     });
+    const [channelId, setChannelId]= useState(null);
 
-
-    async function DisplayNotConnectedNotification(input) {
+    async function UpdateNOTCONNECTEDNotification() {
 
         // Create a channel (required for Android)
-        const channelId = await notifee.createChannel({
+        var chId = await notifee.createChannel({
             id: 'default',
             name: 'Default Channel',
         });
+        setChannelId(chId);
 
-        console.log("NOTIFICATION");
         // Display a notification
         await notifee.displayNotification({
+            id: "kuken",
             title: 'Device disconnected',
             body: 'Reconnect device to resume monitoring.',
             android: {
                 ongoing: true,
                 channelId,
-                // smallIcon: 'name-of-a-small-icon', // optional, defaults to 'ic_launcher'.
+                smallIcon: 'ic_status_disconnected', // optional, defaults to 'ic_launcher'.
+                color: '#870400',
                 // pressAction is needed if you want the notification to open the app when pressed
                 pressAction: {
                     id: 'default',
@@ -122,7 +132,57 @@ const App: () => Node = () => {
             },
         });
         return true;
+    };
 
+    async function UpdateNOTONWRISTNotification() {
+
+        // Create a channel (required for Android)
+        var chId = await notifee.createChannel({
+            id: 'default',
+            name: 'Default Channel',
+        });
+        setChannelId(chId);
+        // Display a notification
+        await notifee.displayNotification({
+            id: "kuken",
+            title: 'Device not on wrist',
+            body: 'please wear device to resume monitoring.',
+            android: {
+                channelId,
+                smallIcon: 'ic_status_connected', // optional, defaults to 'ic_launcher'.
+                // color: '#870400',
+                // pressAction is needed if you want the notification to open the app when pressed
+                pressAction: {
+                    id: 'default',
+                },
+            },
+        });
+        return true;
+    };
+    async function UpdateONWRISTNotification() {
+
+        // Create a channel (required for Android)
+        var chId = await notifee.createChannel({
+            id: 'default',
+            name: 'Default Channel',
+        });
+        setChannelId(chId);
+        // Display a notification
+        await notifee.displayNotification({
+            id: "kuken",
+            title: 'Device on wrist',
+            body: 'All is good',
+            android: {
+                channelId,
+                smallIcon: 'ic_status_onwrist', // optional, defaults to 'ic_launcher'.
+                // color: '#870400',
+                // pressAction is needed if you want the notification to open the app when pressed
+                pressAction: {
+                    id: 'default',
+                },
+            },
+        });
+        return true;
     };
 
     const [ext_temp_events, setExt_temp_events] = useState(0);
@@ -143,7 +203,14 @@ const App: () => Node = () => {
 
 
     if(init){
-        eventListener1 = empaticaEvents.addListener('EventOnWrist', (event) => {setOnWrist(event);});
+        eventListener1 = empaticaEvents.addListener('EventOnWrist', (event) => {
+            setOnWrist(event);
+            UpdateNOTONWRISTNotification();
+        });
+        eventListener10 = empaticaEvents.addListener('EventOffWrist', (event) => {
+            setOnWrist(event);
+            UpdateONWRISTNotification();
+        });
         eventListener2 = empaticaEvents.addListener('EventStatus', (event) => {setStatus(event);});
         eventListener3 = empaticaEvents.addListener('EventButtonPress', (event) => {
             Vibration.vibrate(200);
@@ -155,8 +222,8 @@ const App: () => Node = () => {
         eventListener5 = empaticaEvents.addListener('EventNewDevice', (event) => {setDeviceName(event);});
         eventListener6 = empaticaEvents.addListener('EventButtonPressCount', (event) => {setCount(event);});
         eventListener7 = empaticaEvents.addListener('EventDisconnected', (event) => {
-
-            DisplayNotConnectedNotification();
+            console.log("Disconnected")
+            UpdateNOTCONNECTEDNotification();
         });
     }
 
@@ -192,7 +259,7 @@ const App: () => Node = () => {
                 <Button title="Request Permissions" onPress={requestAllPermission} />
                 <Button title="Connect Device" onPress={runEmpatica} />
                 <Button title="Disconnect Device" onPress={stopEmpatica} />
-                <Button title="Display notification" onPress={() => DisplayNotification()} />
+                <Button title="Display notification" onPress={() => DisplayNotConnectedNotification()} />
                 <Text>Status: {status}</Text>
                 <Text>On wrist: {onWrist}</Text>
                 <Text>Device: {deviceName}</Text>
