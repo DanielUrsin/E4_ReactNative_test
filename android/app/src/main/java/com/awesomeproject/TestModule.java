@@ -57,7 +57,7 @@ import androidx.core.app.NotificationCompat;
 public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDelegate, EmpaStatusDelegate {
 
     private static final String CHANNEL_ID = "1";
-    private ReactApplicationContext thecontext = null;
+    private ReactApplicationContext theContext = null;
     private Activity theactivity = getCurrentActivity();
 
     private String statusEventName = "EventStatus";
@@ -72,7 +72,7 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
 
     TestModule(ReactApplicationContext reactContext) {
        super(reactContext);
-       this.thecontext = reactContext;
+       this.theContext = reactContext;
     }
 
     @Override
@@ -83,15 +83,15 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
 //------------------------------------------------------------------------------------------------------------//
 
 
-    private void sendEvent(ReactApplicationContext reactContext, String eventName, String params) {
+    private void sendEvent(ReactApplicationContext reactContext, String eventName, WritableMap params) {
         reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit(eventName, params);
         return;
     }
+
     @ReactMethod
     public void addListener(String eventName) {
         // Set up any upstream listeners or background tasks as necessary
     }
-
     @ReactMethod
     public void removeListeners(Integer count) {
         // Remove upstream listeners, stop unnecessary background tasks
@@ -110,16 +110,20 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
 
     @ReactMethod
     public void startEmpatica(){
-
         try {
+            WritableMap payload = Arguments.createMap();
+            payload.putString("category", "connecting");
+            sendEvent(theContext, "statusEvent", payload);
             if (deviceManager == null){
-                sendEvent(thecontext, statusEventName, "Readying ... ");
-                deviceManager = new EmpaDeviceManager(thecontext, TestModule.this, TestModule.this);
+                deviceManager = new EmpaDeviceManager(theContext, TestModule.this, TestModule.this);
                 deviceManager.authenticateWithAPIKey(EMPATICA_API_KEY);
             }
         }
         catch(Exception e){
-            sendEvent(thecontext, statusEventName, "Readying failed: "+e.toString());
+            WritableMap payload = Arguments.createMap();
+            payload.putString("category", "launchError");
+            payload.putString("message", "Empatica system launch failed.");
+            sendEvent(theContext, "errorEvent", payload);
         }
     }
 
@@ -136,25 +140,22 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
 
     @Override
     public void didDiscoverDevice(EmpaticaDevice bluetoothDevice, String deviceName, int rssi, boolean allowed) {
-        // Check if the discovered device can be used with your API key. If allowed is always false,
-        // the device is not linked with your API key. Please check your developer area at
-        // https://www.empatica.com/connect/developer.php
-        if (allowed) {
-            sendEvent(thecontext, newDeviceEventName, deviceName);
-            // Stop scanning. The first allowed device will do.
+
+        WritableMap payload = Arguments.createMap();
+        try {
             deviceManager.stopScanning();
-            try {
-                // Connect to the device
-                deviceManager.connectDevice(bluetoothDevice);
-
-            } catch (ConnectionNotAllowedException e) {
-                // This should happen only if you try to connect when allowed == false.
-                sendEvent(thecontext, statusEventName, "Device connection failed .. ");
-
+            if (!allowed){
+                throw new ConnectionNotAllowedException("Not authorized");
             }
-        }
-        else{
-            sendEvent(thecontext, statusEventName, deviceName+" not allowed");
+            deviceManager.connectDevice(bluetoothDevice);
+            payload.putString("category", "deviceName");
+            payload.putString("value", deviceName);
+            sendEvent(theContext, "statusEvent", payload);
+
+        } catch (ConnectionNotAllowedException e) {
+            payload.putString("category", "authenticationError");
+            payload.putString("value", deviceName);
+            sendEvent(theContext, "errorEvent", payload);
         }
     }
 
@@ -162,28 +163,24 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
     @Override
     public void didUpdateStatus(EmpaStatus status) {
 
-        // The device manager is ready for use
+        WritableMap payload = Arguments.createMap();
         if (status == EmpaStatus.READY) {
-            sendEvent(thecontext, statusEventName, "Scanning ... ");
             deviceManager.startScanning();
+            payload.putString("category", "connecting");
+            sendEvent(theContext, "statusEvent", payload);
         }
         else if (status == EmpaStatus.CONNECTED){
-            sendEvent(thecontext, statusEventName, "Connected");
-            sendEvent(thecontext, connectedEventName, "Connected");
-
+            payload.putString("category", "connected");
+            sendEvent(theContext, "statusEvent", payload);
         }
         else if (status == EmpaStatus.DISCONNECTED){
-            sendEvent(thecontext, statusEventName, "Disconnected");
-            sendEvent(thecontext, disconnectedEventName, "Disconnected");
-            sendEvent(thecontext, newDeviceEventName, "No device connected");
             deviceManager = null;
-
+            payload.putString("category", "disconnected");
+            sendEvent(theContext, "statusEvent", payload);
         }
         else if (status == EmpaStatus.CONNECTING){
-            sendEvent(thecontext, statusEventName, "Connecting ... ");
         }
         else if (status == EmpaStatus.DISCONNECTING){
-            sendEvent(thecontext, statusEventName, "Disconnecting ... ");
         }
 
     }
@@ -191,14 +188,16 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
     @Override
     public void didUpdateOnWristStatus(@EmpaSensorStatus final int status) {
 
-        if (status == EmpaSensorStatus.ON_WRIST) {
-            sendEvent(thecontext, onWristEventName, "True");
+        WritableMap payload = Arguments.createMap();
+        payload.putString("category", "onWrist");
 
+        if (status == EmpaSensorStatus.ON_WRIST) {
+            payload.putString("value", "True");
         }
         else {
-            sendEvent(thecontext, offWristEventName, "False");
+            payload.putString("value", "False");
         }
-
+        sendEvent(theContext, "statusEvent", payload);
     }
 
 
@@ -217,39 +216,47 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
     }
     @Override
     public void didReceiveAcceleration(int x, int y, int z, double timestamp) {
-        sendEvent(thecontext, "EventAcceleration", "true");
+        WritableMap payload = Arguments.createMap();
+        payload.putString("category", "ACC");
+        payload.putString("x", Integer.toString(x));
+        payload.putString("y", Integer.toString(y));
+        payload.putString("z", Integer.toString(z));
+        payload.putString("timestamp", Double.toString(timestamp));
+        sendEvent(theContext, "dataEvent", payload);
     }
     @Override
     public void didReceiveBVP(float bvp, double timestamp) {
-        sendEvent(thecontext, "EventBVP", "true");
     }
     @Override
     public void didReceiveBatteryLevel(float battery, double timestamp) {
-        sendEvent(thecontext, "EventBattery", "true");
     }
     @Override
     public void didReceiveGSR(float gsr, double timestamp) {
-        sendEvent(thecontext, "EventGSR", "true");
     }
     @Override
     public void didReceiveIBI(float ibi, double timestamp) {
-        sendEvent(thecontext, "EventIBI", "true");
     }
     @Override
     public void didReceiveTemperature(float temp, double timestamp) {
-        sendEvent(thecontext, temperatureEventName, Float.toString(temp));
+        WritableMap payload = Arguments.createMap();
+        payload.putString("category", "ACC");
+        payload.putString("value", Float.toString(temp));
+        payload.putString("timestamp", Double.toString(timestamp));
+        sendEvent(theContext, "dataEvent", payload);
     }
     @Override
     public void didReceiveTag(double timestamp) {
         this.buttonPressCount += 1;
-        String tempTime = String.format("%.0f", timestamp);
-        sendEvent(thecontext, "EventButtonPress", tempTime);
-        sendEvent(thecontext, "EventButtonPressCount", String.valueOf(this.buttonPressCount));
+        WritableMap payload = Arguments.createMap();
+        payload.putString("category", "buttonPress");
+        payload.putString("value", String.valueOf(this.buttonPressCount));
+        payload.putString("timestamp", Double.toString(timestamp));
+        sendEvent(theContext, "statusEvent", payload);
     }
     @Override
     public void didEstablishConnection() {
-
-        sendEvent(thecontext, statusEventName, "Connected");
+        WritableMap payload = Arguments.createMap();
+        payload.putString("category", "connected");
+        sendEvent(theContext, "statusEvent", payload);
     }
-
 }

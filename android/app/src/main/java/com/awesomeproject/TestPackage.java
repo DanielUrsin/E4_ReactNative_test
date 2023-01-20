@@ -24,5 +24,4 @@ public class TestPackage implements ReactPackage {
 
        return modules;
    }
-
 }
