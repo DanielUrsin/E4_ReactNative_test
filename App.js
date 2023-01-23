@@ -131,7 +131,6 @@ const App: () => Node = () => {
 
 
     // Async helper functions
-
     async function checkAllPermission() {
         console.log("Requesting all")
         const os_version = Platform.constants['Release'];

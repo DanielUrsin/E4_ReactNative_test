@@ -57,22 +57,15 @@ import androidx.core.app.NotificationCompat;
 public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDelegate, EmpaStatusDelegate {
 
     private static final String CHANNEL_ID = "1";
-    private ReactApplicationContext theContext = null;
-    private Activity theactivity = getCurrentActivity();
+    private ReactApplicationContext reactContext = null;
+    //private Activity theactivity = getCurrentActivity();
 
-    private String statusEventName = "EventStatus";
-    private String onWristEventName = "EventOnWrist";
-    private String offWristEventName = "EventOffWrist";
-    private String newDeviceEventName = "EventNewDevice";
-    private String disconnectedEventName = "EventDisconnected";
-    private String temperatureEventName = "EventTemperature";
-    private String connectedEventName = "EventConnected";
     private int buttonPressCount = 0;
 
 
     TestModule(ReactApplicationContext reactContext) {
        super(reactContext);
-       this.theContext = reactContext;
+       this.reactContext = reactContext;
     }
 
     @Override
@@ -113,9 +106,9 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
         try {
             WritableMap payload = Arguments.createMap();
             payload.putString("category", "connecting");
-            sendEvent(theContext, "statusEvent", payload);
+            sendEvent(reactContext, "statusEvent", payload);
             if (deviceManager == null){
-                deviceManager = new EmpaDeviceManager(theContext, TestModule.this, TestModule.this);
+                deviceManager = new EmpaDeviceManager(reactContext, TestModule.this, TestModule.this);
                 deviceManager.authenticateWithAPIKey(EMPATICA_API_KEY);
             }
         }
@@ -123,7 +116,7 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
             WritableMap payload = Arguments.createMap();
             payload.putString("category", "launchError");
             payload.putString("message", "Empatica system launch failed.");
-            sendEvent(theContext, "errorEvent", payload);
+            sendEvent(reactContext, "errorEvent", payload);
         }
     }
 
@@ -150,12 +143,12 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
             deviceManager.connectDevice(bluetoothDevice);
             payload.putString("category", "deviceName");
             payload.putString("value", deviceName);
-            sendEvent(theContext, "statusEvent", payload);
+            sendEvent(reactContext, "statusEvent", payload);
 
         } catch (ConnectionNotAllowedException e) {
             payload.putString("category", "authenticationError");
             payload.putString("value", deviceName);
-            sendEvent(theContext, "errorEvent", payload);
+            sendEvent(reactContext, "errorEvent", payload);
         }
     }
 
@@ -167,16 +160,16 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
         if (status == EmpaStatus.READY) {
             deviceManager.startScanning();
             payload.putString("category", "connecting");
-            sendEvent(theContext, "statusEvent", payload);
+            sendEvent(reactContext, "statusEvent", payload);
         }
         else if (status == EmpaStatus.CONNECTED){
             payload.putString("category", "connected");
-            sendEvent(theContext, "statusEvent", payload);
+            sendEvent(reactContext, "statusEvent", payload);
         }
         else if (status == EmpaStatus.DISCONNECTED){
             deviceManager = null;
             payload.putString("category", "disconnected");
-            sendEvent(theContext, "statusEvent", payload);
+            sendEvent(reactContext, "statusEvent", payload);
         }
         else if (status == EmpaStatus.CONNECTING){
         }
@@ -197,7 +190,7 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
         else {
             payload.putString("value", "False");
         }
-        sendEvent(theContext, "statusEvent", payload);
+        sendEvent(reactContext, "statusEvent", payload);
     }
 
 
@@ -222,7 +215,7 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
         payload.putString("y", Integer.toString(y));
         payload.putString("z", Integer.toString(z));
         payload.putString("timestamp", Double.toString(timestamp));
-        sendEvent(theContext, "dataEvent", payload);
+        sendEvent(reactContext, "dataEvent", payload);
     }
     @Override
     public void didReceiveBVP(float bvp, double timestamp) {
@@ -242,7 +235,7 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
         payload.putString("category", "ACC");
         payload.putString("value", Float.toString(temp));
         payload.putString("timestamp", Double.toString(timestamp));
-        sendEvent(theContext, "dataEvent", payload);
+        sendEvent(reactContext, "dataEvent", payload);
     }
     @Override
     public void didReceiveTag(double timestamp) {
@@ -251,12 +244,12 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
         payload.putString("category", "buttonPress");
         payload.putString("value", String.valueOf(this.buttonPressCount));
         payload.putString("timestamp", Double.toString(timestamp));
-        sendEvent(theContext, "statusEvent", payload);
+        sendEvent(reactContext, "statusEvent", payload);
     }
     @Override
     public void didEstablishConnection() {
         WritableMap payload = Arguments.createMap();
         payload.putString("category", "connected");
-        sendEvent(theContext, "statusEvent", payload);
+        sendEvent(reactContext, "statusEvent", payload);
     }
 }
