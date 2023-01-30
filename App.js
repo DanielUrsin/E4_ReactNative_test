@@ -6,7 +6,7 @@
  * @flow strict-local
  */
 import React, {useState, useEffect, Component} from 'react';
-const { TestModule } = NativeModules;
+const { EmpaticaModule } = NativeModules;
 import { NativeEventEmitter } from 'react-native';
 import notifee, { AndroidAction, AndroidColor, AndroidImportance, EventType } from '@notifee/react-native';
 
@@ -25,15 +25,8 @@ import {
 
 
 
-
-
-
-
-
-
 const App: () => Node = () => {
 
-    const [netConnection, setNetConnection] = useState(false);
     const [channelId, setChannelId] = useState(null);
     const [currMsg, setCurrMsg] = useState(null)
 
@@ -42,15 +35,16 @@ const App: () => Node = () => {
     const [errorEventListener, setErrorListener] = useState(null);
 
     const [onWrist, setOnWrist] = useState("false");
-    const [status, setStatus] = useState("Not connected");
+    const [deviceStatus, setDeviceStatus] = useState("Not connected");
     const [deviceName, setDeviceName] = useState("No device connected");
     const [temperature, setTemperature] = useState("-1");
     const [count, setCount] = useState(0);
     const [latestTime, setLatestTime] = useState("");
 
+    const [permissionStatus, setPermissionStatus] = useState(false);
+    const [internetStatus, setInternetStatus] = useState(false);
+
     const empaticaEvents = new NativeEventEmitter(NativeModules.ToastExample);
-
-
 
     var n1 = {
         id:"123",
@@ -81,7 +75,7 @@ const App: () => Node = () => {
         title: 'Device not on wrist',
         body: 'Wear device to record data.',
         android: {
-            // asForegroundService: true,
+            asForegroundService: true,
             ongoing: true,
             color: AndroidColor.YELLOW,
             colorized: true,
@@ -91,7 +85,7 @@ const App: () => Node = () => {
             pressAction: {
                 id: 'default',
             },
-            // Displays option for removing notification
+            vibration: false,
             actions: [{
                 title: 'Stop',
                 pressAction: {
@@ -105,7 +99,7 @@ const App: () => Node = () => {
         title: 'All good!',
         body: 'Device connected and recording data.',
         android: {
-            // asForegroundService: true,
+            asForegroundService: true,
             ongoing: true,
             color: AndroidColor.GREEN,
             colorized: true,
@@ -115,13 +109,9 @@ const App: () => Node = () => {
             pressAction: {
                 id: 'default',
             },
-            // Displays option for removing notification
+            vibration: false,
             actions: [{
                   title: 'Stop',
-                  pressAction: {
-                      id: 'stop',
-                  },
-                  title: 'Penis',
                   pressAction: {
                       id: 'stop',
                   },
@@ -129,50 +119,48 @@ const App: () => Node = () => {
         },
     }
 
+    async function checkPermissions() {
 
-    // Async helper functions
-    async function checkAllPermission() {
-        console.log("Requesting all")
+        var permissions = [
+            PermissionsAndroid.PERMISSIONS.POST_NOTIFICATION,
+            PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+            PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT
+        ]
+
         const os_version = Platform.constants['Release'];
-        var result1 = false;
-        var result2 = false;
-        var result3 = false;
 
         if (os_version < 12){
-            await PermissionsAndroid.request(
-                PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
-            result1 = true;
-            result2 =  await PermissionsAndroid.check(
-                PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
-            result3 =  await PermissionsAndroid.check(
-                PermissionsAndroid.PERMISSIONS.POST_NOTIFICATION);
+            permissions = [
+                PermissionsAndroid.PERMISSIONS.POST_NOTIFICATION,
+                PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+            ]
         }
-        else {
-            await PermissionsAndroid.request(
-                PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN);
-            await PermissionsAndroid.request(
-                PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT);
-            await PermissionsAndroid.request(
-                PermissionsAndroid.PERMISSIONS.POST_NOTIFICATION);
-            result1 = await PermissionsAndroid.check(
-                PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN);
-            result2 = await PermissionsAndroid.check(
-                PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT);
-            result3 = await PermissionsAndroid.check(
-                PermissionsAndroid.PERMISSIONS.POST_NOTIFICATION);
+        var allGranted = true;
+        var results = await PermissionsAndroid.requestMultiple(permissions,
+            {
+                title: 'All needed permissions',
+                message: "All mentioned permissions are needed for proper app function",
+                buttonPositive: 'OK'
+            }
+        );
+        for (var i = 0; i < permissions.length; i++) {
+            var p = permissions[i];
+            var r = results[p];
+            allGranted &&= (results[p] === PermissionsAndroid.RESULTS.GRANTED);
+            console.log(p.toString()+": "+r.toString());
         }
-        if (result1 && result2 && result3) {
-            console.log("Android version "+os_version+". All permissions granted.");
-            return true;
-        }
-        console.log("Android version "+os_version+". Some permissions denied.");
-        return false;
-    };
+        await setPermissionStatus(allGranted);
+        return allGranted;
+
+    }
+
     async function checkConnection() {
         var status = await NetInfo.fetch();
-        await setNetConnection(status.isConnected);
         console.log("Checked connection")
+        await setInternetStatus(status.isConnected);
+        return status.isConnected;
     };
+
     async function createNotificationChannel() {
         var newChannel = await notifee.createChannel({
             id: 'MainNotification',
@@ -181,38 +169,42 @@ const App: () => Node = () => {
             vibration: false,
         });
         await setChannelId(newChannel);
-        await notifee.requestPermission();
         await onDisplayNotification(n1);
-
-
-
-
     }
+
     async function onDisplayNotification(notification) {
         await notifee.displayNotification(notification);
-
+        return true;
     }
     async function runEmpatica() {
-        await TestModule.startEmpatica();
+        await EmpaticaModule.startEmpatica();
     }
     async function stopEmpatica() {
-        await TestModule.stopEmpatica()
+        await EmpaticaModule.stopEmpatica()
+    }
+    async function getEmpaticaStatus() {
+        EmpaticaModule.getStatus((state) => {
+            setDeviceName(state.deviceName);
+            setDeviceStatus(state.connection);
+            setOnWrist(state.onWrist);
+            setCount(state.buttonPressCount);
+            console.log(state);
+        });
     }
 
-    const isDarkMode = useColorScheme() === 'dark';
-
-
     useEffect(() => {
-        createNotificationChannel()
+
+        checkPermissions();
+        createNotificationChannel();
 
         var newListener = empaticaEvents.addListener('statusEvent', (event) => {
             switch (event.category) {
                 case "connecting":
-                    setStatus("Connecting ...");
+                    setDeviceStatus("Connecting ...");
                     break;
                 case "connected":
                     Vibration.vibrate(100);
-                    setStatus("Connected");
+                    setDeviceStatus("Connected");
                     onDisplayNotification(n2);
                     break;
                 case "deviceName":
@@ -221,7 +213,6 @@ const App: () => Node = () => {
                 case "onWrist":
                     setOnWrist(event.value);
                     if (event.value == "False") {
-                        Vibration.vibrate(1000);
                         onDisplayNotification(n2);
                     }
                     else{
@@ -230,7 +221,7 @@ const App: () => Node = () => {
                     break;
                 case "disconnected":
                     Vibration.vibrate(1000);
-                    setStatus("Disconnected");
+                    setDeviceStatus("Disconnected");
                     setDeviceName("No device connected");
                     onDisplayNotification(n1);
                     break;
@@ -241,7 +232,7 @@ const App: () => Node = () => {
                     break;
                 default:
                     break;
-                }
+            }
         });
         newListener = empaticaEvents.addListener('dataEvent', (event) => {
             switch (event.category) {
@@ -269,10 +260,10 @@ const App: () => Node = () => {
         newListener = empaticaEvents.addListener('errorEvent', (event) => {
             switch (event.category) {
                 case "launchError":
-                    setStatus("Launch error!");
+                    setDeviceStatus("Launch error!");
                     break;
                 case "authenticationError":
-                    setStatus("Failed to authenticate device!");
+                    setDeviceStatus("Failed to authenticate device!");
                     setDeviceName(event.value);
                     break;
                 case "randomStupidError":
@@ -280,41 +271,40 @@ const App: () => Node = () => {
                 default:
                     break;
                 }
+
         });
         setErrorListener(newListener);
+        return notifee.onForegroundEvent(({ type, detail }) => {
+            switch (type) {
+                case EventType.DISMISSED:
+                    console.log('User dismissed notification', detail.notification);
+                    break;
+                case EventType.PRESS:
+                    console.log('User pressed notification', detail.notification);
+                    break;
+            }
+        });
 
     }, []);
-
-
-    checkConnection();
-    if (netConnection != true){
-        return(<View><Text>No internet connection: {netConnection.toString()}</Text></View>);
-    }
-
-
-
-
-
 
 
     return(
         <View>
             <Text>Try permissions</Text>
-            <Button title="Check Permissions" onPress={checkAllPermission} />
             <Button title="Display notification" onPress={() => onDisplayNotification(n1)} />
             <Button title="Connect Device" onPress={runEmpatica} />
             <Button title="Disconnect Device" onPress={stopEmpatica} />
-            <Text>Status: {status}</Text>
-            <Text>On wrist: {onWrist}</Text>
+            <Button title="Get Status" onPress={getEmpaticaStatus} />
+            <Text>Status: {deviceStatus.toString()}</Text>
+            <Text>On wrist: {onWrist.toString()}</Text>
             <Text>Device: {deviceName}</Text>
             <Text>Temp: {temperature}</Text>
             <Text>ButtonPressCount: {count}</Text>
             <Text>Latest button press: {latestTime}</Text>
+            <Text>Internet connection: {internetStatus.toString()}</Text>
+            <Text>Permissions: {permissionStatus.toString()}</Text>
         </View>
     );
-
-    // return(<View><Text>Jess</Text></View>);
-
 };
 
 

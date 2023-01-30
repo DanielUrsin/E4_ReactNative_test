@@ -12,7 +12,7 @@ import java.util.HashMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.Arguments;
-
+import com.facebook.react.bridge.Callback;
 
 import com.empatica.empalink.ConnectionNotAllowedException;
 import com.empatica.empalink.EmpaDeviceManager;
@@ -54,23 +54,27 @@ import androidx.core.app.NotificationCompat;
 
 
 
-public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDelegate, EmpaStatusDelegate {
+public class EmpaticaModule extends ReactContextBaseJavaModule implements EmpaDataDelegate, EmpaStatusDelegate {
 
     private static final String CHANNEL_ID = "1";
     private ReactApplicationContext reactContext = null;
     //private Activity theactivity = getCurrentActivity();
 
+
+    // Data state
     private int buttonPressCount = 0;
+    private String deviceName = "None";
+    private boolean connection = false;
+    private boolean onWrist = false;
 
-
-    TestModule(ReactApplicationContext reactContext) {
+    EmpaticaModule(ReactApplicationContext reactContext) {
        super(reactContext);
        this.reactContext = reactContext;
     }
 
     @Override
     public String getName() {
-       return "TestModule";
+       return "EmpaticaConnector";
     }
 
 //------------------------------------------------------------------------------------------------------------//
@@ -98,9 +102,7 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
 
     private EmpaDeviceManager deviceManager = null;
     private int deviceOnWrist = -1;
-
-
-
+    
     @ReactMethod
     public void startEmpatica(){
         try {
@@ -108,7 +110,7 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
             payload.putString("category", "connecting");
             sendEvent(reactContext, "statusEvent", payload);
             if (deviceManager == null){
-                deviceManager = new EmpaDeviceManager(reactContext, TestModule.this, TestModule.this);
+                deviceManager = new EmpaDeviceManager(reactContext, EmpaticaModule.this, EmpaticaModule.this);
                 deviceManager.authenticateWithAPIKey(EMPATICA_API_KEY);
             }
         }
@@ -128,6 +130,27 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
             deviceManager.disconnect();
             deviceManager = null;
         }
+        this.connection = false;
+        this.deviceName = "None";
+        this.onWrist = false;
+    }
+
+    @ReactMethod
+    public void getStatus(Callback callback) {
+        WritableMap payload = Arguments.createMap();
+        payload.putString("deviceName", this.deviceName);
+        payload.putBoolean("connection", this.connection);
+        payload.putBoolean("onWrist", this.onWrist);
+        payload.putInt("buttonPressCount", this.buttonPressCount);
+        callback.invoke(payload);
+        // void putNull(@NonNull String key);
+        // void putBoolean(@NonNull String key, boolean value);
+        // void putDouble(@NonNull String key, double value);
+        // void putInt(@NonNull String key, int value);
+        // void putString(@NonNull String key, @Nullable String value);
+        // void putArray(@NonNull String key, @Nullable ReadableArray value);
+        // void putMap(@NonNull String key, @Nullable ReadableMap value);
+        // void merge(@NonNull ReadableMap source);
     }
 
 
@@ -144,6 +167,7 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
             payload.putString("category", "deviceName");
             payload.putString("value", deviceName);
             sendEvent(reactContext, "statusEvent", payload);
+            this.deviceName = deviceName;
 
         } catch (ConnectionNotAllowedException e) {
             payload.putString("category", "authenticationError");
@@ -165,11 +189,12 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
         else if (status == EmpaStatus.CONNECTED){
             payload.putString("category", "connected");
             sendEvent(reactContext, "statusEvent", payload);
+            this.connection = true;
         }
         else if (status == EmpaStatus.DISCONNECTED){
-            deviceManager = null;
             payload.putString("category", "disconnected");
             sendEvent(reactContext, "statusEvent", payload);
+            this.stopEmpatica();
         }
         else if (status == EmpaStatus.CONNECTING){
         }
@@ -186,9 +211,11 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
 
         if (status == EmpaSensorStatus.ON_WRIST) {
             payload.putString("value", "True");
+            this.onWrist = true;
         }
         else {
             payload.putString("value", "False");
+            this.onWrist = false;
         }
         sendEvent(reactContext, "statusEvent", payload);
     }
@@ -251,5 +278,6 @@ public class TestModule extends ReactContextBaseJavaModule implements EmpaDataDe
         WritableMap payload = Arguments.createMap();
         payload.putString("category", "connected");
         sendEvent(reactContext, "statusEvent", payload);
+        this.connection = true;
     }
 }

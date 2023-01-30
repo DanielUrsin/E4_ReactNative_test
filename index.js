@@ -8,7 +8,8 @@ import notifee, { EventType } from '@notifee/react-native';
 import {name as appName} from './app.json';
 
 
-notifee.registerForegroundService((notification) => {
+notifee.registerForegroundService((notification, løk) => {
+
     return new Promise(() => {
         // Long running task...
         notifee.onForegroundEvent(({ type, detail }) => {
@@ -19,8 +20,6 @@ notifee.registerForegroundService((notification) => {
         notifee.onBackgroundEvent(({ type, detail }) => {});
     });
 });
-
-
 
 
 
